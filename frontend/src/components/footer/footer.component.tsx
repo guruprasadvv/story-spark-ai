@@ -60,6 +60,14 @@ const FooterComponent = () => {
                   Contact
                 </Link>
               </li>
+              <li>
+                <Link
+                  to="/terms"
+                  className="text-base text-gray-400 hover:text-white transition-colors duration-200"
+                >
+                  Terms
+                </Link>
+              </li>
             </ul>
           </div>
           {/* Resources Section */}

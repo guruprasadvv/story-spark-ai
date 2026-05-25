@@ -33,6 +33,7 @@ import ContactUsComponent from "./components/footer/contact-us.tsx";
 import BlogComponent from "./components/footer/blog.tsx";
 import HelpCenterComponent from "./components/footer/help-center.tsx";
 import GuidelinesComponent from "./components/footer/guidelines.tsx";
+import TermsAndConditions from "./components/footer/terms.tsx";
 import TemplatesComponent from "./components/templates/templates.component";
 import CommunityComponent from "./components/community/community.component";
 const ProtectedRoute = ({
@@ -239,6 +240,7 @@ function App() {
         <Route path="/blog" element={<BlogComponent />} />
         <Route path="/help-center" element={<HelpCenterComponent />} />
         <Route path="/guidelines" element={<GuidelinesComponent />} />
+        <Route path="/terms" element={<TermsAndConditions />} />
         <Route path="/community" element={<CommunityComponent />} />
         <Route path="*" element={<NotFoundComponent />} />
       </Routes>
