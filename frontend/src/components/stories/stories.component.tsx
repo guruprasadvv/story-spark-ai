@@ -13,6 +13,7 @@ import { useGetProfileInfoQuery } from "../../redux/apis/user.api";
 import { getErrorMessage } from "../../error/error.message";
 import useKeyboardShortcuts from "../../hooks/useKeyboardShortcuts";
 import StoryGeneratingAnimation from "../loading/story-generating-animation.component";
+
 type Inputs = {
   prompt: string;
 };
@@ -31,14 +32,106 @@ const LANGUAGES = [
   { code: "bn", name: "Bengali" },
   { code: "ta", name: "Tamil" },
   { code: "te", name: "Telugu" },
-  { code: "mr", name: "Marathi" }
+  { code: "mr", name: "Marathi" },
 ];
 
+// NEW: Tone definitions — each has a label, emoji, and Tailwind colour classes
+// for the active/inactive pill states.
+const TONES = [
+  {
+    label: "Dark",
+    emoji: "🌑",
+    activeClass: "bg-gray-700 text-gray-100 border-gray-500 shadow-gray-700/40",
+    inactiveClass: "bg-white/5 text-gray-400 border-transparent hover:bg-white/10 hover:text-gray-200",
+  },
+  {
+    label: "Humorous",
+    emoji: "😄",
+    activeClass: "bg-yellow-500/20 text-yellow-300 border-yellow-500/60 shadow-yellow-500/20",
+    inactiveClass: "bg-white/5 text-gray-400 border-transparent hover:bg-white/10 hover:text-gray-200",
+  },
+  {
+    label: "Romantic",
+    emoji: "💕",
+    activeClass: "bg-pink-500/20 text-pink-300 border-pink-500/60 shadow-pink-500/20",
+    inactiveClass: "bg-white/5 text-gray-400 border-transparent hover:bg-white/10 hover:text-gray-200",
+  },
+  {
+    label: "Epic",
+    emoji: "⚔️",
+    activeClass: "bg-orange-500/20 text-orange-300 border-orange-500/60 shadow-orange-500/20",
+    inactiveClass: "bg-white/5 text-gray-400 border-transparent hover:bg-white/10 hover:text-gray-200",
+  },
+  {
+    label: "Mysterious",
+    emoji: "🔮",
+    activeClass: "bg-purple-500/20 text-purple-300 border-purple-500/60 shadow-purple-500/20",
+    inactiveClass: "bg-white/5 text-gray-400 border-transparent hover:bg-white/10 hover:text-gray-200",
+  },
+  {
+    label: "Children's",
+    emoji: "🧸",
+    activeClass: "bg-green-500/20 text-green-300 border-green-500/60 shadow-green-500/20",
+    inactiveClass: "bg-white/5 text-gray-400 border-transparent hover:bg-white/10 hover:text-gray-200",
+  },
+] as const;
+
+type ToneLabel = (typeof TONES)[number]["label"];
+
+// ---------------------------------------------------------------------------
+// TonePicker sub-component
+// ---------------------------------------------------------------------------
+interface TonePickerProps {
+  selected: ToneLabel | "";
+  onChange: (tone: ToneLabel | "") => void;
+}
+
+const TonePicker: React.FC<TonePickerProps> = ({ selected, onChange }) => {
+  return (
+    <div className="flex flex-wrap gap-2 mb-3">
+      <span className="w-full text-xs text-gray-400 mb-1">🎭 Tone:</span>
+      {TONES.map((tone) => {
+        const isActive = selected === tone.label;
+        return (
+          <button
+            key={tone.label}
+            type="button"
+            onClick={() => onChange(isActive ? "" : tone.label)}
+            aria-pressed={isActive}
+            title={isActive ? `Remove "${tone.label}" tone` : `Set tone to "${tone.label}"`}
+            className={`
+              px-3 py-1 rounded-full text-xs font-medium border transition-all duration-200
+              ${isActive
+                ? `${tone.activeClass} shadow-md scale-105`
+                : tone.inactiveClass
+              }
+            `}
+          >
+            {tone.emoji} {tone.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Main StoriesComponent
+// ---------------------------------------------------------------------------
 const StoriesComponent = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { register, handleSubmit, reset, setValue } = useForm<Inputs>();
-  const [stories, setStories] = useState<IStories[]>([{uuid:"test-1",title:"The Wizard's Journey",content:"Merlin walked through the forest toward the castle. The village was far behind him. He crossed the bridge over the river and entered the dungeon beneath the tower. Dragons guarded the mountain beyond the valley. Elena watched from the palace window as Merlin approached the cave near the ocean shore.",tag:"Fantasy",imageURL:"https://via.placeholder.com/400x300"}]);
+  const [stories, setStories] = useState<IStories[]>([
+    {
+      uuid: "test-1",
+      title: "The Wizard's Journey",
+      content:
+        "Merlin walked through the forest toward the castle. The village was far behind him. He crossed the bridge over the river and entered the dungeon beneath the tower. Dragons guarded the mountain beyond the valley. Elena watched from the palace window as Merlin approached the cave near the ocean shore.",
+      tag: "Fantasy",
+      imageURL: "https://via.placeholder.com/400x300",
+    },
+  ]);
   const [loading, setLoading] = useState<boolean>(false);
   const { data } = useGetProfileInfoQuery(undefined);
   const userRole = getUserInfo();
@@ -49,17 +142,19 @@ const StoriesComponent = () => {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [selectedGenre, setSelectedGenre] = useState<string>("");
   const [selectedLength, setSelectedLength] = useState<string>("medium");
+  const [selectedTone, setSelectedTone] = useState<ToneLabel | "">(""); // NEW: tone state
   const [textareaValue, setTextareaValue] = useState<string>("");
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
   const [selectedLanguage, setSelectedLanguage] = useState<string>("English");
-  const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState<boolean>(false);
+  const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] =
+    useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const languageDropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const activeGenerationRef = useRef<{ abort: () => void } | null>(null);
   const isGenerationInProgressRef = useRef(false);
   const [guestRequestCount, setGuestRequestCount] = useState<number>(() =>
-    parseInt(localStorage.getItem("guestRequestCount") || "0", 10),
+    parseInt(localStorage.getItem("guestRequestCount") || "0", 10)
   );
   const [showLimitModal, setShowLimitModal] = useState<boolean>(false);
 
@@ -132,7 +227,7 @@ const StoriesComponent = () => {
     }
     if (getWordCount(data.prompt) < 10) {
       toast.error(
-        "Please enter a prompt with at least 10 words to generate a story.",
+        "Please enter a prompt with at least 10 words to generate a story."
       );
       return;
     }
@@ -145,10 +240,15 @@ const StoriesComponent = () => {
           ? `[Genre: ${selectedGenre}] ${data.prompt}`
           : data.prompt,
         wordLength:
-          selectedLength === "short" ? 150
-          : selectedLength === "long" ? 500
-          : 250,
+          selectedLength === "short"
+            ? 150
+            : selectedLength === "long"
+            ? 500
+            : 250,
         language: selectedLanguage,
+        // NEW: include tone in the payload — undefined when no tone is selected
+        // so the backend treats it as "no tone preference" and omits the directive.
+        tone: selectedTone || undefined,
       };
       const generationRequest = login
         ? generateModel(payload)
@@ -261,10 +361,13 @@ const StoriesComponent = () => {
                 <span className="text-gray-400 text-xs">Per Month</span>{" "}
                 {getRequestLimit(userRole?.subscriptionType as string)}
               </span>
-              <Link to="/pricing" className="border-1 border-white/20 pl-2 text-gray-300">
-               Upgrade
+              <Link
+                to="/pricing"
+                className="border-1 border-white/20 pl-2 text-gray-300"
+              >
+                Upgrade
               </Link>
-              
+
               <i className="fas fa-bolt text-yellow-400"></i>
             </button>
             <div className="mt-3 text-slate-500 text-xs text-center md:text-right dark:text-gray-500">
@@ -289,272 +392,320 @@ const StoriesComponent = () => {
 
           <div className="max-w-3xl mx-auto px-4 sm:px-0">
             <div className="bg-gray-50 rounded-md p-4 border border-gray-200 text-slate-900 dark:bg-blue-500/10 dark:border-gray-400 dark:text-white">
-<div className="relative">
-  <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
-    <div className="flex flex-wrap gap-2 mb-3">
-      {[
-        "🎭 Drama",
-        "😂 Comedy",
-        "😱 Horror",
-        "💕 Romance",
-        "🚀 Sci-Fi",
-        "🧙 Fantasy",
-        "🔍 Mystery",
-        "🌟 Adventure",
-      ].map((genre) => (
-        <button
-          key={genre}
-          type="button"
-          onClick={() =>
-            setSelectedGenre(selectedGenre === genre ? "" : genre)
-          }
-          className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
-            selectedGenre === genre
-              ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/30"
-              : "bg-white/10 text-gray-400 hover:bg-white/20 hover:text-gray-200"
-          }`}
-        >
-          {genre}
-        </button>
-      ))}
-    </div>
+              <div className="relative">
+                <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
+                  {/* ── Genre chips ── */}
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {[
+                      "🎭 Drama",
+                      "😂 Comedy",
+                      "😱 Horror",
+                      "💕 Romance",
+                      "🚀 Sci-Fi",
+                      "🧙 Fantasy",
+                      "🔍 Mystery",
+                      "🌟 Adventure",
+                    ].map((genre) => (
+                      <button
+                        key={genre}
+                        type="button"
+                        onClick={() =>
+                          setSelectedGenre(selectedGenre === genre ? "" : genre)
+                        }
+                        className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
+                          selectedGenre === genre
+                            ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/30"
+                            : "bg-white/10 text-gray-400 hover:bg-white/20 hover:text-gray-200"
+                        }`}
+                      >
+                        {genre}
+                      </button>
+                    ))}
+                  </div>
 
-    <div className="flex flex-wrap items-center gap-4 mb-3">
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-gray-400 mr-1">📏 Length:</span>
+                  {/* ── NEW: Tone picker ── */}
+                  <TonePicker selected={selectedTone} onChange={setSelectedTone} />
 
-        {(["short", "medium", "long"] as const).map((length) => (
-          <button
-            key={length}
-            type="button"
-            onClick={() => setSelectedLength(length)}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
-              selectedLength === length
-                ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/30"
-                : "bg-white/10 text-gray-400 hover:bg-white/20 hover:text-gray-200"
-            }`}
-          >
-            {length.charAt(0).toUpperCase() + length.slice(1)}
-          </button>
-        ))}
-      </div>
+                  {/* ── Length + Language row ── */}
+                  <div className="flex flex-wrap items-center gap-4 mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-400 mr-1">
+                        📏 Length:
+                      </span>
 
-      <div className="flex items-center gap-2 ml-0 sm:ml-auto">
-        <span className="text-xs text-gray-400 mr-1">🌐 Language:</span>
-        <div className="relative" ref={languageDropdownRef}>
-          <button
-            key="lang-selector-btn"
-            type="button"
-            onClick={() => setIsLanguageDropdownOpen(!isLanguageDropdownOpen)}
-            className="flex items-center gap-2 px-3 py-1 bg-white/10 text-gray-300 border border-slate-700/50 rounded-full text-xs font-semibold hover:bg-white/20 transition-all duration-200 cursor-pointer"
-          >
-            <span>{LANGUAGES.find(l => l.name === selectedLanguage)?.name || "English"}</span>
-            <span className="text-gray-400 text-[10px]">▼</span>
-          </button>
+                      {(["short", "medium", "long"] as const).map((length) => (
+                        <button
+                          key={length}
+                          type="button"
+                          onClick={() => setSelectedLength(length)}
+                          className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
+                            selectedLength === length
+                              ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/30"
+                              : "bg-white/10 text-gray-400 hover:bg-white/20 hover:text-gray-200"
+                          }`}
+                        >
+                          {length.charAt(0).toUpperCase() + length.slice(1)}
+                        </button>
+                      ))}
+                    </div>
 
-          {isLanguageDropdownOpen && (
-            <ul className="absolute right-0 z-20 mt-1 max-h-48 w-36 overflow-y-auto bg-slate-800 border border-slate-700/50 rounded-lg shadow-xl focus:outline-none divide-y divide-slate-700/30">
-              {LANGUAGES.map((lang) => (
-                <li key={lang.code}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedLanguage(lang.name);
-                      setIsLanguageDropdownOpen(false);
-                    }}
-                    className={`w-full text-left px-3 py-2 text-xs transition-colors duration-150 cursor-pointer ${
-                      selectedLanguage === lang.name
-                        ? "bg-indigo-600 text-white font-bold"
-                        : "text-gray-400 hover:bg-indigo-600/50 hover:text-white"
-                    }`}
-                  >
-                    {lang.name}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </div>
-    </div>
+                    <div className="flex items-center gap-2 ml-0 sm:ml-auto">
+                      <span className="text-xs text-gray-400 mr-1">
+                        🌐 Language:
+                      </span>
+                      <div className="relative" ref={languageDropdownRef}>
+                        <button
+                          key="lang-selector-btn"
+                          type="button"
+                          onClick={() =>
+                            setIsLanguageDropdownOpen(!isLanguageDropdownOpen)
+                          }
+                          className="flex items-center gap-2 px-3 py-1 bg-white/10 text-gray-300 border border-slate-700/50 rounded-full text-xs font-semibold hover:bg-white/20 transition-all duration-200 cursor-pointer"
+                        >
+                          <span>
+                            {LANGUAGES.find((l) => l.name === selectedLanguage)
+                              ?.name || "English"}
+                          </span>
+                          <span className="text-gray-400 text-[10px]">▼</span>
+                        </button>
 
-    <div className="relative">
-      <textarea
-  {...register("prompt")}
-  ref={(el) => {
-    register("prompt").ref(el);
-    inputRef.current = el;
-  }}
-        className={`w-full h-32 sm:h-40 resize-none border-none outline-none bg-transparent text-gray-800 dark:text-gray-200 focus:ring-0 text-lg leading-relaxed tracking-wide placeholder:italic placeholder:text-gray-500 dark:placeholder:text-gray-400 pr-10 transition-colors duration-200 ${
-          isOverLimit
-            ? "ring-1 ring-red-500 rounded"
-            : isNearLimit
-            ? "ring-1 ring-yellow-400 rounded"
-            : ""
-        }`}
-        placeholder="Every great story begins with a single idea. What's yours?"
-        value={textareaValue}
-        maxLength={MAX_PROMPT_LENGTH}
-        onChange={(e) => setTextareaValue(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            const form = e.currentTarget.closest("form");
-            if (form) form.requestSubmit();
-          }
-        }}
-        />
+                        {isLanguageDropdownOpen && (
+                          <ul className="absolute right-0 z-20 mt-1 max-h-48 w-36 overflow-y-auto bg-slate-800 border border-slate-700/50 rounded-lg shadow-xl focus:outline-none divide-y divide-slate-700/30">
+                            {LANGUAGES.map((lang) => (
+                              <li key={lang.code}>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedLanguage(lang.name);
+                                    setIsLanguageDropdownOpen(false);
+                                  }}
+                                  className={`w-full text-left px-3 py-2 text-xs transition-colors duration-150 cursor-pointer ${
+                                    selectedLanguage === lang.name
+                                      ? "bg-indigo-600 text-white font-bold"
+                                      : "text-gray-400 hover:bg-indigo-600/50 hover:text-white"
+                                  }`}
+                                >
+                                  {lang.name}
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    </div>
+                  </div>
 
-      {textareaValue.length > 0 && (
-        <button
-          type="button"
-          onClick={handleClearPrompt}
-          className="absolute right-2 top-2 text-gray-400 hover:text-red-500 transition-colors duration-200"
-          aria-label="Clear prompt"
-          title="Clear prompt"
-        >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
-        </button>
-      )}
+                  {/* ── Prompt textarea ── */}
+                  <div className="relative">
+                    <textarea
+                      {...register("prompt")}
+                      ref={(el) => {
+                        register("prompt").ref(el);
+                        inputRef.current = el;
+                      }}
+                      className={`w-full h-32 sm:h-40 resize-none border-none outline-none bg-transparent text-gray-800 dark:text-gray-200 focus:ring-0 text-lg leading-relaxed tracking-wide placeholder:italic placeholder:text-gray-500 dark:placeholder:text-gray-400 pr-10 transition-colors duration-200 ${
+                        isOverLimit
+                          ? "ring-1 ring-red-500 rounded"
+                          : isNearLimit
+                          ? "ring-1 ring-yellow-400 rounded"
+                          : ""
+                      }`}
+                      placeholder="Every great story begins with a single idea. What's yours?"
+                      value={textareaValue}
+                      maxLength={MAX_PROMPT_LENGTH}
+                      onChange={(e) => setTextareaValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          const form = e.currentTarget.closest("form");
+                          if (form) form.requestSubmit();
+                        }
+                      }}
+                    />
 
-      <div className="flex items-center justify-between mt-1 px-1">
-        {isOverLimit ? (
-          <p className="text-xs text-red-400 flex items-center gap-1">
-            <span>⚠</span> Character limit reached — generate is disabled
-          </p>
-        ) : isNearLimit ? (
-          <p className="text-xs text-yellow-400 flex items-center gap-1">
-            <span>⚠</span>{" "}
-            {MAX_PROMPT_LENGTH - textareaValue.length} characters remaining
-          </p>
-        ) : (
-          <span />
-        )}
+                    {textareaValue.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearPrompt}
+                        className="absolute right-2 top-2 text-gray-400 hover:text-red-500 transition-colors duration-200"
+                        aria-label="Clear prompt"
+                        title="Clear prompt"
+                      >
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
+                    )}
 
-        <span
-          className={`text-xs tabular-nums ml-auto ${
-            isOverLimit
-              ? "text-red-400 font-medium"
-              : isNearLimit
-              ? "text-yellow-400"
-              : "text-gray-500"
-          }`}
-        >
-          {textareaValue.length} / {MAX_PROMPT_LENGTH}
-        </span>
-      </div>
-    </div>
+                    <div className="flex items-center justify-between mt-1 px-1">
+                      {isOverLimit ? (
+                        <p className="text-xs text-red-400 flex items-center gap-1">
+                          <span>⚠</span> Character limit reached — generate is
+                          disabled
+                        </p>
+                      ) : isNearLimit ? (
+                        <p className="text-xs text-yellow-400 flex items-center gap-1">
+                          <span>⚠</span>{" "}
+                          {MAX_PROMPT_LENGTH - textareaValue.length} characters
+                          remaining
+                        </p>
+                      ) : (
+                        <span />
+                      )}
 
-    <p className="text-xs text-gray-500 mt-1 px-1">
-      💡  <span className="font-medium">Keyboard tip:</span> Press{" "}
-      <kbd className="px-1 py-0.5 text-xs bg-gray-700 rounded border border-gray-600">
-        Enter
-      </kbd>{" "}
-      to generate &bull;{" "}
-      <kbd className="px-1 py-0.5 text-xs bg-gray-700 rounded border border-gray-600">
-        Ctrl + Enter
-      </kbd>{" "}
-      also works &bull;{" "}
-      <kbd className="px-1 py-0.5 text-xs bg-gray-700 rounded border border-gray-600">
-        Shift + Enter
-      </kbd>{" "}
-      for new line
-    </p>
+                      <span
+                        className={`text-xs tabular-nums ml-auto ${
+                          isOverLimit
+                            ? "text-red-400 font-medium"
+                            : isNearLimit
+                            ? "text-yellow-400"
+                            : "text-gray-500"
+                        }`}
+                      >
+                        {textareaValue.length} / {MAX_PROMPT_LENGTH}
+                      </span>
+                    </div>
+                  </div>
 
-    <div className="flex justify-end mt-2 w-full">
-      <button
-        type="submit"
-        disabled={loading || isOverLimit}
-        aria-busy={loading}
-        aria-disabled={loading || isOverLimit}
-        className={`rounded-lg bg-gradient-to-r from-blue-400 to-indigo-500 text-gray-200 px-6 py-3 font-semibold ${
-          loading || isOverLimit
-            ? "opacity-50 cursor-not-allowed"
-            : "cursor-pointer hover:shadow-lg hover:shadow-indigo-500/50 hover:scale-105"
-        } transition-all duration-300 transform flex items-center space-x-2 group`}
-      >
-        <i className="fas fa-wand-magic-sparkles text-xl transition-transform duration-300 group-hover:animate-wiggle"></i>
-        {loading ? "Generating..." : "Generate"}
-      </button>
-    </div>
-  </form>
-</div>
+                  <p className="text-xs text-gray-500 mt-1 px-1">
+                    💡{" "}
+                    <span className="font-medium">Keyboard tip:</span> Press{" "}
+                    <kbd className="px-1 py-0.5 text-xs bg-gray-700 rounded border border-gray-600">
+                      Enter
+                    </kbd>{" "}
+                    to generate &bull;{" "}
+                    <kbd className="px-1 py-0.5 text-xs bg-gray-700 rounded border border-gray-600">
+                      Ctrl + Enter
+                    </kbd>{" "}
+                    also works &bull;{" "}
+                    <kbd className="px-1 py-0.5 text-xs bg-gray-700 rounded border border-gray-600">
+                      Shift + Enter
+                    </kbd>{" "}
+                    for new line
+                  </p>
+
+                  {/* ── Generate button row ── */}
+                  <div className="flex items-center justify-between mt-2 w-full">
+                    {/* NEW: Active tone badge — shows next to Generate so the user
+                        knows what tone will be applied before they submit. */}
+                    <div className="flex items-center gap-2 text-xs text-gray-400">
+                      {selectedTone && (
+                        <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-white/10 border border-white/10">
+                          {TONES.find((t) => t.label === selectedTone)?.emoji}{" "}
+                          <span className="font-medium">{selectedTone}</span>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedTone("")}
+                            className="ml-1 text-gray-500 hover:text-red-400 transition-colors"
+                            aria-label="Remove tone"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      )}
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={loading || isOverLimit}
+                      aria-busy={loading}
+                      aria-disabled={loading || isOverLimit}
+                      className={`rounded-lg bg-gradient-to-r from-blue-400 to-indigo-500 text-gray-200 px-6 py-3 font-semibold ${
+                        loading || isOverLimit
+                          ? "opacity-50 cursor-not-allowed"
+                          : "cursor-pointer hover:shadow-lg hover:shadow-indigo-500/50 hover:scale-105"
+                      } transition-all duration-300 transform flex items-center space-x-2 group`}
+                    >
+                      <i className="fas fa-wand-magic-sparkles text-xl transition-transform duration-300 group-hover:animate-wiggle"></i>
+                      {loading ? "Generating..." : "Generate"}
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
 
             <div className="w-full max-w-2xl m-auto mt-4">
-          <h1 className="text-sm text-slate-500 mb-1 dark:text-gray-500">
-    Here are some example prompts you can refer to:-
-  </h1>
+              <h1 className="text-sm text-slate-500 mb-1 dark:text-gray-500">
+                Here are some example prompts you can refer to:-
+              </h1>
 
-  <div className="relative" ref={dropdownRef}>
-    <button
-      type="button"
-      onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-      className="w-full p-3 bg-slate-800 text-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 flex items-center justify-between text-sm text-left transition-all duration-200"
-    >
-      <span className="truncate pr-4">
-        {selectedPrompt || "Select a prompt"}
-      </span>
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="w-full p-3 bg-slate-800 text-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 flex items-center justify-between text-sm text-left transition-all duration-200"
+                >
+                  <span className="truncate pr-4">
+                    {selectedPrompt || "Select a prompt"}
+                  </span>
 
-      <span
-        className={`text-gray-300 transition-transform duration-200 ${
-          isDropdownOpen ? "rotate-180" : ""
-        }`}
-      >
-        ▼
-      </span>
-    </button>
+                  <span
+                    className={`text-gray-300 transition-transform duration-200 ${
+                      isDropdownOpen ? "rotate-180" : ""
+                    }`}
+                  >
+                    ▼
+                  </span>
+                </button>
 
-    {isDropdownOpen && (
-      <ul className="relative z-10 w-full mt-2 max-h-60 overflow-y-auto bg-slate-800 border border-slate-700/50 rounded-lg shadow-xl focus:outline-none divide-y divide-slate-700/30">
-        {prompts.map((item) => (
-          <li key={item.id}>
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedPrompt(item.prompt);
-                setTextareaValue(item.prompt);
-                setIsDropdownOpen(false);
-              }}
-              className="w-full text-left px-4 py-3 text-sm text-gray-400 hover:bg-indigo-600 hover:text-white transition-colors duration-150 whitespace-normal break-words leading-relaxed"
-            >
-              {item.prompt}
-            </button>
-          </li>
-        ))}
-      </ul>
-    )}
-  </div>
-</div>
+                {isDropdownOpen && (
+                  <ul className="relative z-10 w-full mt-2 max-h-60 overflow-y-auto bg-slate-800 border border-slate-700/50 rounded-lg shadow-xl focus:outline-none divide-y divide-slate-700/30">
+                    {prompts.map((item) => (
+                      <li key={item.id}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedPrompt(item.prompt);
+                            setTextareaValue(item.prompt);
+                            setIsDropdownOpen(false);
+                          }}
+                          className="w-full text-left px-4 py-3 text-sm text-gray-400 hover:bg-indigo-600 hover:text-white transition-colors duration-150 whitespace-normal break-words leading-relaxed"
+                        >
+                          {item.prompt}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
       {showHelpModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-            <div className="bg-white border border-gray-200 rounded-2xl p-6 max-w-md w-full text-slate-900 dark:bg-slate-900 dark:border-slate-700 dark:text-white">
-              <h2 className="text-xl font-bold text-slate-900 mb-4 dark:text-white">
+          <div className="bg-white border border-gray-200 rounded-2xl p-6 max-w-md w-full text-slate-900 dark:bg-slate-900 dark:border-slate-700 dark:text-white">
+            <h2 className="text-xl font-bold text-slate-900 mb-4 dark:text-white">
               Keyboard Shortcuts
             </h2>
 
             <div className="space-y-3 text-slate-600 text-sm dark:text-gray-300">
-              <div><kbd>?</kbd> Open help</div>
-              <div><kbd>Esc</kbd> Close help</div>
-              <div><kbd>/</kbd> Focus prompt</div>
-              <div><kbd>Ctrl + Enter</kbd> Generate story</div>
-              <div><kbd>Ctrl + S</kbd> Publish story</div>
+              <div>
+                <kbd>?</kbd> Open help
+              </div>
+              <div>
+                <kbd>Esc</kbd> Close help
+              </div>
+              <div>
+                <kbd>/</kbd> Focus prompt
+              </div>
+              <div>
+                <kbd>Ctrl + Enter</kbd> Generate story
+              </div>
+              <div>
+                <kbd>Ctrl + S</kbd> Publish story
+              </div>
             </div>
 
             <button
@@ -567,7 +718,9 @@ const StoriesComponent = () => {
         </div>
       )}
 
-      {loading && <StoryGeneratingAnimation onCancel={handleCancelGeneration} />}
+      {loading && (
+        <StoryGeneratingAnimation onCancel={handleCancelGeneration} />
+      )}
       <StoriesViewComponent
         stories={stories}
         isLogin={login}
