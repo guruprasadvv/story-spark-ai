@@ -21,20 +21,26 @@ const HelpCategories: FC<HelpCategoriesProps> = ({ categories }) => {
       aria-labelledby="categories-heading"
     >
       <div className="text-center mb-10">
+        
         <h2
           id="categories-heading"
-          className="text-3xl font-bold text-gray-300"
+          className="text-3xl font-bold text-slate-800 dark:text-gray-300"
         >
           Quick Help Categories
         </h2>
-        <p className="mt-3 text-gray-400 max-w-2xl mx-auto">
+
+        <p className="mt-3 text-slate-600 dark:text-gray-400 max-w-2xl mx-auto">
           Jump into the topic you need — from your first story to contributing code.
         </p>
+
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {categories.map((category) => (
-          <HelpCategoryCard key={category.id} category={category} />
+          <HelpCategoryCard
+            key={category.id}
+            category={category}
+          />
         ))}
       </div>
     </motion.section>

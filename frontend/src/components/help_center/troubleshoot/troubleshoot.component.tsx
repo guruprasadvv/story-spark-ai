@@ -21,20 +21,26 @@ const Troubleshoot: FC<TroubleshootProps> = ({ items }) => {
       aria-labelledby="troubleshooting-heading"
     >
       <div className="text-center mb-10">
+        
         <h2
           id="troubleshooting-heading"
-          className="text-3xl font-bold text-gray-300"
+          className="text-3xl font-bold text-slate-800 dark:text-gray-300"
         >
           Troubleshooting
         </h2>
-        <p className="mt-3 text-gray-400 max-w-2xl mx-auto">
+
+        <p className="mt-3 text-slate-600 dark:text-gray-400 max-w-2xl mx-auto">
           Diagnose and fix common setup and runtime issues.
         </p>
+
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {items.map((item) => (
-          <TroubleshootCard key={item.id} item={item} />
+          <TroubleshootCard
+            key={item.id}
+            item={item}
+          />
         ))}
       </div>
     </motion.section>
