@@ -203,7 +203,6 @@ const LoginComponent = () => {
             <GoogleLogin
               onSuccess={handleGoogleLoginSuccess}
               onError={handleGoogleLoginError}
-              width="100%"
             />
           </div>
 
