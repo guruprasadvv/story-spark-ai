@@ -15,7 +15,7 @@ import { Report } from "../report/report.model";
 const allowedSocialFields = ["facebook", "twitter", "linkedin", "instagram"] as const;
 
 const getAllUsers = async (): Promise<IUser[]> => {
-  const result = await User.find({});
+  const result = await User.find({}).select("-password");
   return result;
 };
 
@@ -28,7 +28,11 @@ const updateUser = async (token: ITokenPayload, payload: Partial<IUser>) => {
   const updateData: Record<string, unknown> = {};
 
   if (typeof payload.name === "string") {
-    updateData.name = payload.name;
+    const trimmedName = payload.name.trim();
+    if (!trimmedName) {
+      throw new ApiError(httpStatus.BAD_REQUEST, "Full Name cannot be empty!");
+    }
+    updateData.name = trimmedName;
   }
 
   if (payload.profile) {
@@ -94,11 +98,6 @@ const deleteUser = async (id: string): Promise<void> => {
   await Reaction.deleteMany({ postId: { $in: postIds } });
   await Comment.deleteMany({ postId: { $in: postIds } });
   await Bookmark.deleteMany({ storyId: { $in: postIds } });
-
-  await Post.updateMany(
-    { bookmarks: id },
-    { $pull: { bookmarks: id } }
-  );
 
   await Bookmark.deleteMany({ userId: id });
   await Reaction.deleteMany({ userId: id });
