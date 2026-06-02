@@ -1,20 +1,17 @@
 import React from "react";
 
 import { createBrowserRouter, Navigate, Outlet, RouterProvider } from "react-router-dom";
-
 import { USER_ROLE } from "./constants/role";
 import { getUserInfo } from "./services/auth.service";
 
 import RootLayout from "./components/layout/root_layout.component";
-import LoadingAnimation from "./components/loading/loading.component";
-import SimpleProtectedRoute from "./components/ProtectedRoute";
-import ScrollToTopButton from "./components/ScrollToTopButton";
-import ScrollToTop from "./components/ScrollToTop";
-import MagicCursorComponent from "./components/magic-cursor/magic_cursor.component";
+import DashboardLayout from "./components/dashboard/dashboard_layout.component";
 
 import DashboardLayout from "./components/dashboard/dashboard_layout.component";
 import HeroSectionComponent from "./components/hero/hero_section.component";
 import HomeComponent from "./components/home/home.component";
+import LoginComponent from "./components/login/login.component";
+import MagicCursorComponent from "./components/magic-cursor/magic_cursor.component";
 import NotFoundComponent from "./components/not-found.component";
 
 // Lazy-loaded page components
@@ -64,7 +61,6 @@ type ProtectedRouteProps = {
   element?: React.ReactElement;
 };
 
-
 const ProtectedRoute = ({ allowedRoles, element }: ProtectedRouteProps) => {
   const user = getUserInfo();
 
@@ -85,25 +81,20 @@ const router = createBrowserRouter([
   {
     path: "/",
     element: (
-      <>
+      <div className="w-full box-border relative">
         <ScrollToTopButton />
         <MagicCursorComponent />
         <ScrollToTop />
         <RootLayout>
-          <React.Suspense fallback={<LoadingAnimation />}>
-            <Outlet />
-          </React.Suspense>
+          <Outlet />
         </RootLayout>
-      </>
+      </div>
     ),
     children: [
       { index: true, element: <><HeroSectionComponent /><HomeComponent /></> },
       { path: "templates", element: <TemplatesComponent /> },
       { path: "writing-assistant", element: <WritingAssistantComponent /> },
       { path: "story-inspiration", element: <StoryInspirationWrapper /> },
-      { path: "stories", element: <StoriesComponent /> },
-      { path: "posts", element: <PostsPage /> },
-      { path: "story-workspace", element: <StoryWorkspace /> },
       { path: "login", element: <LoginComponent /> },
       { path: "signup", element: <SignUpComponent /> },
       { path: "forgot-password", element: <ForgotPasswordComponent /> },
@@ -113,6 +104,7 @@ const router = createBrowserRouter([
       { path: "about-us", element: <AboutUsComponent /> },
       { path: "career", element: <CareerComponent /> },
       { path: "blog", element: <BlogComponent /> },
+      { path: "blog/:id", element: <BlogPostComponent /> },
       { path: "privacy-policy", element: <PrivacyPolicy /> },
       { path: "cookie-policy", element: <CookiePolicy /> },
       { path: "terms", element: <Terms /> },
@@ -163,44 +155,18 @@ const router = createBrowserRouter([
     ],
   },
 
-  // Isolated layout branches (Bypassing public navigation headers entirely)
-  {
-    path: "/auth/email-validation",
-    element: (
-      <React.Suspense fallback={<LoadingAnimation />}>
-        <EmailValidationComponent />
-      </React.Suspense>
-    ),
-  },
+  // Isolated layout branches
+  { path: "/auth/email-validation", element: <EmailValidationComponent /> },
   {
     element: <ProtectedRoute allowedRoles={ALL_ROLES} />,
     children: [
-      {
-        path: "/payment",
-        element: (
-          <React.Suspense fallback={<LoadingAnimation />}>
-            <PaymentComponent />
-          </React.Suspense>
-        ),
-      },
-      {
-        path: "/collab",
-        element: (
-          <React.Suspense fallback={<LoadingAnimation />}>
-            <CollabHome />
-          </React.Suspense>
-        ),
-      },
-      {
-        path: "/collab/:roomId",
-        element: (
-          <React.Suspense fallback={<LoadingAnimation />}>
-            <CollabRoom />
-          </React.Suspense>
-        ),
-      },
+      { path: "/payment", element: <PaymentComponent /> },
+      { path: "/collab", element: <CollabHome /> },
+      { path: "/collab/:roomId", element: <CollabRoom /> },
     ],
   },
+
+  // Dashboard
   {
     path: "/dashboard",
     element: <ProtectedRoute allowedRoles={ALL_ROLES} />,
@@ -236,11 +202,19 @@ const router = createBrowserRouter([
       },
     ],
   },
-]);
+], {
+  future: {
+    v7_startTransition: true,
+    v7_relativeSplatPath: true,
+    v7_fetcherPersist: true,
+    v7_normalizeFormMethod: true,
+    v7_partialHydration: true,
+    v7_skipActionErrorRevalidation: true,
+  }
+});
 
 function App() {
   return <RouterProvider router={router} />;
 }
-
 
 export default App;
