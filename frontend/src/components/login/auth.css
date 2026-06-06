@@ -509,3 +509,10 @@ button:disabled {
     }
     .ds-spinner { animation: none !important; }
 }
+
+.auth-field,
+.input-icon-wrapper {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+}
