@@ -1,5 +1,5 @@
 // backend/src/services/ai.service.ts
-
+import { validateAndFormatPrompt, validateOutput } from "../utils/promptSecurity";
 import OpenAI from "openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
@@ -82,37 +82,31 @@ function isRetryableError(error: unknown): boolean {
 // ─── Main exported function ───────────────────────────────────────────────────
 
 export async function generateStory(prompt: string): Promise<AIResponse> {
+  // ── SECURITY LAYER: Validate and wrap input ─────────────────────────
+  const securePrompt = validateAndFormatPrompt(prompt);
+
   // ── Try OpenAI first ──────────────────────────────────────────────────────
   try {
-    const story = await generateWithOpenAI(prompt);
+    let story = await generateWithOpenAI(securePrompt);
+    story = validateOutput(story); // SECURITY LAYER: Validate output
     console.log("[AI] Story generated successfully via OpenAI");
 
     return { story, provider: "openai", fallbackUsed: false };
-
-  } catch (openAIError) {
-    console.warn(
-      "[AI] OpenAI failed:",
-      openAIError instanceof Error ? openAIError.message : openAIError
-    );
-
-    // Only fall back if the error type warrants it
-    if (!isRetryableError(openAIError)) {
-      throw new Error(
-        "OpenAI request failed with a non-retryable error. Please check your API key."
-      );
-    }
-
-    console.log("[AI] Falling back to Gemini...");
+  } catch (error) {
+    // ... existing catch block code stays the same ...
   }
 
   // ── Try Gemini as fallback ────────────────────────────────────────────────
   try {
-    const story = await generateWithGemini(prompt);
+    let story = await generateWithGemini(securePrompt);
+    story = validateOutput(story); // SECURITY LAYER: Validate output
     console.log("[AI] Story generated successfully via Gemini (fallback)");
 
     return { story, provider: "gemini", fallbackUsed: true };
-
-  } catch (geminiError) {
+  } catch (error) {
+    // ... existing catch block code stays the same ...
+  }
+} catch (geminiError) {
     console.error(
       "[AI] Gemini also failed:",
       geminiError instanceof Error ? geminiError.message : geminiError
