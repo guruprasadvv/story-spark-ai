@@ -1,21 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import StoriesViewComponent, { IStories } from "./stories.view.component";
-import RecentPromptsPanel from "./RecentPromptsPanel";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { getUserInfo, isLoggedIn } from "../../services/auth.service";
-import { getRequestLimit, getWordCount, prompts } from "./stories.utils";
-import {
-  useGenerateFreeModelMutation,
-  useGenerateModelMutation,
-} from "../../redux/apis/ai.model.api";
-import toast, { Toaster } from "react-hot-toast";
-import { SubmitHandler, useForm } from "react-hook-form";
-import { useGetProfileInfoQuery } from "../../redux/apis/user.api";
-import { getErrorMessage } from "../../error/error.message";
-import useKeyboardShortcuts from "../../hooks/useKeyboardShortcuts";
-import { useRecentPrompts } from "../../hooks/useRecentPrompts";
-import StoryGeneratingAnimation from "../loading/story-generating-animation.component";
-import { useDebounce } from "../../hooks/useDebounce";
+import { DraftSaveStatus } from "../shared/DraftSaveStatus";
 
 const soundtrackMap: Record<string, string> = {
   "ðŸ§™ Fantasy": "/audio/fantasy.mp3",
@@ -455,6 +438,7 @@ const getUniqueStories = (storyList: IStories[]) => {
 // Main StoriesComponent
 // ---------------------------------------------------------------------------
 import { useDebounce } from "../../hooks/useDebounce";
+import { useAutoSave, loadDraft, clearDraft } from "../../hooks/useAutoSave";
 interface ICharacter {
   id: string;
   name: string;
@@ -493,6 +477,7 @@ const StoriesComponent = () => {
     if (!searchQuery.trim()) return uniqueStories;
   const debouncedSearchQuery = useDebounce(searchQuery, 350);
   const debouncedPrompt = useDebounce(textareaValue, 500);
+  const { saveStatus, lastSaved } = useAutoSave("new", "", textareaValue);
 
 
   const filteredStories = useMemo(() => {
@@ -1161,6 +1146,7 @@ useEffect(() => {
 
         <div className="max-w-3xl mx-auto w-full box-border space-y-6">
           <div className="bg-white dark:bg-[#111827]/40 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl sm:rounded-3xl p-5 sm:p-7 shadow-sm hover:shadow-xl transition-shadow duration-300 w-full box-border">
+            <div className="flex justify-end mb-2"><DraftSaveStatus status={saveStatus} lastSaved={lastSaved} /></div>
             <form className="space-y-6 w-full box-border" onSubmit={handleSubmit(onSubmit)}>
               {currentStep === 1 ? (
                 <>
