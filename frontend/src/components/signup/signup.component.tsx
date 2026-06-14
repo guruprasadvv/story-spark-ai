@@ -18,10 +18,10 @@ interface IRegisterInfo {
   name: string;
   email: string;
   password: string;
+  confirmPassword: string;
 }
 
 interface Inputs extends IRegisterInfo {
-  confirmPassword: string;
   otp: string;
 }
 
@@ -106,18 +106,26 @@ const SignUpComponent = () => {
 
   const onSubmit: SubmitHandler<Inputs> = async (data) => {
     if (data) {
-      const user = { name: data.name, email: data.email, password: data.password };
+      const user = {
+        name: data.name,
+        email: data.email,
+        password: data.password,
+        confirmPassword: data.confirmPassword,
+      };
+
       const otpPayload = { name: data.name, email: data.email };
 
       if (password !== confirmPassword) {
         toast.error("Passwords do not match!");
         return;
       }
+
       const passwordError = getPasswordError(data.password);
       if (passwordError) {
         toast.error(passwordError);
         return;
       }
+
       setIsBusy(true);
       try {
         const res = await emailVerify({ ...otpPayload }).unwrap();
@@ -420,4 +428,3 @@ const SignUpComponent = () => {
 };
 
 export default SignUpComponent;
-
