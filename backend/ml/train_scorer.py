@@ -12,16 +12,16 @@ Place at: backend/ml/train_scorer.py
 import os, random, string
 import numpy as np
 import joblib
+import matplotlib.pyplot as plt
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from scorer import build_model, MAX_VOCAB, MAX_LEN, SAVE_DIR
+from sklearn.model_selection import train_test_split
 
 # ── Weak-label heuristics ──────────────────────────────────────────────────────
-# These are deliberately simple proxies. Real labels accumulate from user
-# behaviour (which story they keep/edit) and replace these over time.
 
 TRANSITION_WORDS = {
     "however", "therefore", "meanwhile", "suddenly", "consequently",
@@ -39,7 +39,6 @@ def coherence_label(story: str) -> float:
     if len(words) < 20:
         return 0.2
     transitions = sum(1 for w in words if w in TRANSITION_WORDS)
-    # More transitions + reasonable length → higher coherence proxy
     score = min(1.0, 0.4 + transitions * 0.08 + min(len(words), 300) / 800)
     return round(score, 2)
 
@@ -141,26 +140,46 @@ if __name__ == "__main__":
     print("Building synthetic dataset…")
     stories, prompts, coh, cre, rel = build_dataset(2000)
 
+    # ✅ Split BEFORE tokenizer fitting
+    (
+        train_stories, val_stories,
+        train_prompts, val_prompts,
+        train_coh,    val_coh,
+        train_cre,    val_cre,
+        train_rel,    val_rel,
+    ) = train_test_split(
+        stories, prompts, coh, cre, rel,
+        test_size=0.15,
+        random_state=42,
+    )
+
+    # ✅ Fit only on training data
     tokenizer = Tokenizer(num_words=MAX_VOCAB, oov_token="<OOV>")
-    tokenizer.fit_on_texts(stories + prompts)
+    tokenizer.fit_on_texts(train_stories + train_prompts)
 
     def encode(texts):
         seqs = tokenizer.texts_to_sequences(texts)
         return pad_sequences(seqs, maxlen=MAX_LEN, padding="post", truncating="post")
 
-    story_enc  = encode(stories)
-    prompt_enc = encode(prompts)
+    # ✅ Encode train and val separately
+    train_story_enc  = encode(train_stories)
+    train_prompt_enc = encode(train_prompts)
+    val_story_enc    = encode(val_stories)
+    val_prompt_enc   = encode(val_prompts)
 
     model = build_model()
     model.summary()
 
     print("Training…")
     model.fit(
-        {"story": story_enc, "prompt": prompt_enc},
-        {"coherence": coh, "creativity": cre, "relevance": rel},
+        {"story": train_story_enc, "prompt": train_prompt_enc},
+        {"coherence": train_coh, "creativity": train_cre, "relevance": train_rel},
         epochs=10,
         batch_size=32,
-        validation_split=0.15,
+        validation_data=(
+            {"story": val_story_enc, "prompt": val_prompt_enc},
+            {"coherence": val_coh, "creativity": val_cre, "relevance": val_rel},
+        ),
         verbose=1,
     )
 
@@ -168,35 +187,27 @@ if __name__ == "__main__":
     model.save(os.path.join(SAVE_DIR, "scorer.keras"))
     joblib.dump(tokenizer, os.path.join(SAVE_DIR, "tokenizer.pkl"))
     print(f"Saved to {SAVE_DIR}/")
+
+    # ── Evaluation plot ────────────────────────────────────────────────────────
     
-    
-import matplotlib.pyplot as plt
-import numpy as np
+    pred_coh, pred_cre, pred_rel = model.predict(
+        {"story": val_story_enc, "prompt": val_prompt_enc}, verbose=0
+    )
 
-# Predictions lao
-val_size = int(0.15 * len(stories))
-val_stories = story_enc[-val_size:]
-val_prompts = prompt_enc[-val_size:]
-val_coh, val_cre, val_rel = coh[-val_size:], cre[-val_size:], rel[-val_size:]
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
 
-pred_coh, pred_cre, pred_rel = model.predict(
-    {"story": val_stories, "prompt": val_prompts}, verbose=0
-)
+    for ax, true, pred, title in zip(
+        axes,
+        [val_coh, val_cre, val_rel],
+        [pred_coh, pred_cre, pred_rel],
+        ["Coherence", "Creativity", "Relevance"]
+    ):
+        ax.scatter(true, pred.flatten(), alpha=0.5, s=10)
+        ax.plot([0, 1], [0, 1], 'r--')
+        ax.set_xlabel("True")
+        ax.set_ylabel("Predicted")
+        ax.set_title(title)
 
-fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-
-for ax, true, pred, title in zip(
-    axes,
-    [val_coh, val_cre, val_rel],
-    [pred_coh, pred_cre, pred_rel],
-    ["Coherence", "Creativity", "Relevance"]
-):
-    ax.scatter(true, pred.flatten(), alpha=0.5, s=10)
-    ax.plot([0, 1], [0, 1], 'r--')   # perfect prediction line
-    ax.set_xlabel("True")
-    ax.set_ylabel("Predicted")
-    ax.set_title(title)
-
-plt.tight_layout()
-plt.savefig("scorer_eval.png")
-print("scorer_eval.png save ho gayi!")
+    plt.tight_layout()
+    plt.savefig("scorer_eval.png")
+    print("scorer_eval.png saved!")
