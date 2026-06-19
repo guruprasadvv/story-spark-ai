@@ -5,9 +5,7 @@ import { AIModelValidator } from "./ai_model.validation";
 import checkRequestLimit from "../../middleware/check.request.limit";
 import auth from "../../middleware/auth.middleware";
 import freeAiRateLimiter from "../../middleware/free-ai.rate-limiter";
-import {
-  aiGenerationRateLimiter,
-} from "../../middleware/ip.rate-limiter";
+import { aiGenerationRateLimiter } from "../../middleware/ip.rate-limiter";
 import storyGenerationRateLimiter from "../../middleware/story.rate-limiter";
 
 const router = express.Router();
@@ -126,7 +124,6 @@ router.post(
 // ========== AI CHAT ==========
 
 // AI Chat - PROTECTED
-
 router.post(
   "/chat",
   auth(),
