@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { rateLimit } from "express-rate-limit";
+import rateLimit from "express-rate-limit";
 
 /**
  * Dedicated rate limiter for the /api/v1/search endpoint.
@@ -11,8 +11,8 @@ export const searchRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: "Too many search requests. Please wait a moment and try again.",
-  keyGenerator: (req: Request, _res: Response) => {
+  keyGenerator: (req: any, _res: any): string => {
     const forwarded = (req.headers["x-forwarded-for"] as string) ?? "";
     return forwarded.split(",")[0]?.trim() || req.ip || "unknown";
   },
-});
+} as any);
