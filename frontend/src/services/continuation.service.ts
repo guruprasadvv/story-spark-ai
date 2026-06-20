@@ -10,7 +10,7 @@ export const continueStory = async (chapters: Chapter[]) => {
 
   try {
     const response = await axios.post(
-      `${BASE_URL}/ai_model/continue-story`,
+      `${API_BASE}/ai_model/continue-story`,
       {
         prompt: `
 Continue this story naturally.
@@ -33,7 +33,6 @@ ${previousContent}
     console.error("Story continuation request failed:", error);
     throw new Error("Failed to continue story.");
   }
-  return response.data.data.continuation;
 };
 
 /**
@@ -48,7 +47,7 @@ export const getContinuations = async (
 ): Promise<string[]> => {
   const previousContent = chapters.map((c) => c.content).join("\n\n");
   const response = await axios.post(
-    `${BASE_URL}/ai_model/continue-story`,
+    `${API_BASE}/ai_model/continue-story`,
     {
       prompt: `
 Continue this story naturally.
