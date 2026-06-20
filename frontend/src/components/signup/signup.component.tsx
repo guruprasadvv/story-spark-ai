@@ -88,16 +88,16 @@ const SignUpComponent = () => {
     return () => clearInterval(timer);
   }, [cooldown]);
 
-  const password = watch("password");
-  const confirmPassword = watch("confirmPassword");
-  const otp = watch("otp");
+  const password = watch("password") || "";
+  const confirmPassword = watch("confirmPassword") || "";
+  const otp = watch("otp") || "";
 
   const passwordChecks = {
-    length: password?.length >= 8,
-    uppercase: /[A-Z]/.test(password || ""),
-    lowercase: /[a-z]/.test(password || ""),
-    number: /[0-9]/.test(password || ""),
-    special: /[^A-Za-z0-9]/.test(password || ""),
+    length: password.length >= 8,
+    uppercase: /[A-Z]/.test(password),
+    lowercase: /[a-z]/.test(password),
+    number: /[0-9]/.test(password),
+    special: /[^A-Za-z0-9]/.test(password),
   };
 
   const passedChecks = Object.values(passwordChecks).filter(Boolean).length;
@@ -144,7 +144,7 @@ const SignUpComponent = () => {
   };
 
   const handleOtpValidation = async () => {
-    const enteredOtp = otp?.trim();
+    const enteredOtp = otp.trim();
     if (!enteredOtp) { toast.error("Please enter OTP"); return; }
     if (!registerInfo) { toast.error("Something went wrong. Please restart the process."); return; }
     if (Date.now() > expiredAt) { toast.error("OTP expired. Please request a new one."); return; }
@@ -306,7 +306,7 @@ const SignUpComponent = () => {
                 />
               </div>
 
-              {password?.length > 0 && (
+              {password.length > 0 && (
                 <div className="space-y-3 w-full min-w-0 overflow-hidden box-border">
                   <div
                     className="w-full h-1.5 bg-slate-200 dark:bg-slate-700/50 rounded-full overflow-hidden"
