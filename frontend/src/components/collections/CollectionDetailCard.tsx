@@ -180,7 +180,7 @@ const CollectionDetailCard: React.FC<Props> = ({ collection, isOwner, onDelete }
             </h3>
             <p className="text-slate-500 dark:text-slate-500 mt-2 text-sm">
               {isOwner
-                ? "Head to one of your stories and click "Add to Collection"."
+                ? 'Head to one of your stories and click "Add to Collection".'
                 : "The author hasn't added any stories yet."}
             </p>
           </div>

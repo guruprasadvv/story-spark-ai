@@ -156,9 +156,14 @@ const addStoryToCollection = async (
     throw new ApiError(httpStatus.FORBIDDEN, "You do not own this collection.");
   }
 
+  // Validate storyId is a well-formed ObjectId before using it in a query
+  if (!Types.ObjectId.isValid(storyId)) {
+    throw new ApiError(httpStatus.BAD_REQUEST, "Invalid story ID.");
+  }
+
   // Only the collection owner's published stories can be added
   const post = await Post.findOne({
-    _id: storyId,
+    _id: new Types.ObjectId(storyId),
     author: user._id,
     isPublished: true,
     isDeleted: { $ne: true },
@@ -199,6 +204,11 @@ const removeStoryFromCollection = async (
 ) => {
   const user = await User.findOne({ email: token.email });
   if (!user) throw new ApiError(httpStatus.BAD_REQUEST, "User not found!");
+
+  // Validate storyId is a well-formed ObjectId before using it in a filter
+  if (!Types.ObjectId.isValid(storyId)) {
+    throw new ApiError(httpStatus.BAD_REQUEST, "Invalid story ID.");
+  }
 
   const collection = await Collection.findOne({
     _id: collectionId,
