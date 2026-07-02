@@ -11,6 +11,7 @@ import ContinueStoryButton from "./ContinueStoryButton";
 import CharacterNetwork from "../CharacterNetwork";
 import StoryCoverGenerator from "../cover-generator/StoryCoverGenerator";
 import StoryChecklist from "../checklist/StoryChecklist";
+import StoryRewritePanel from "../rewrite/StoryRewritePanel";
 
 import {
   getSafeFileName,
@@ -246,8 +247,12 @@ const StoryWorkspace = () => {
   characters={["Hero", "Villain"]}
 />
 
-<StoryOutlineGenerator
-  prompt="A young explorer discovers an ancient kingdom."
+<StoryRewritePanel
+  story={
+    currentStory.chapters
+      ?.map((chapter) => chapter.content)
+      .join("\n\n") || ""
+  }
 />
 
   <StoryViewer
